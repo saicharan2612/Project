@@ -171,9 +171,22 @@ export function PatientDashboard() {
 
   // Initial Data Load
   useEffect(() => {
-    const sessionEmail = typeof window !== 'undefined' ? localStorage.getItem('carelink_session_email') : null
-    let account = sessionEmail ? findDemoAccount(sessionEmail) : null
-    if (!account || account.roleSlug !== 'patient') {
+    let account: DemoAccount | null = null
+    if (typeof window !== 'undefined') {
+      const storedUser = localStorage.getItem('carelink_user')
+      if (storedUser) {
+        try {
+          account = JSON.parse(storedUser)
+        } catch (e) {
+          console.error('Failed to parse stored user:', e)
+        }
+      }
+      if (!account) {
+        const sessionEmail = localStorage.getItem('carelink_session_email')
+        account = sessionEmail ? findDemoAccount(sessionEmail) : null
+      }
+    }
+    if (!account) {
       account = getDemoAccountByRole('patient') || null
     }
     setCurrentUser(account)
@@ -190,58 +203,64 @@ export function PatientDashboard() {
   }, [])
 
   // Patient Identity (MRN & Name)
-  const patientMrn = currentUser?.mrn || 'MRN-84920'
-  const patientName = currentUser?.name || 'Amara Okafor'
+  const isDemoPatient = !currentUser || currentUser.id === 'demo-patient' || currentUser.email === 'patient@carelink.health'
+  const patientMrn = currentUser?.mrn || (currentUser?.id ? 'MRN-' + currentUser.id.slice(-6).toUpperCase() : 'MRN-84920')
+  const patientName = currentUser?.name || 'Patient'
   const patientId = currentUser?.id || 'demo-patient'
 
   // Security & Object-Level Isolation: Filter datasets exclusively for the logged-in patient
   const myAppointments = useMemo(() => {
+    if (!currentUser) return []
     return appointments.filter(
       (a) =>
         a.patientId === patientId ||
         a.mrn === patientMrn ||
-        a.patientEmail === currentUser?.email ||
-        a.patientName.toLowerCase() === patientName.toLowerCase()
+        (currentUser.email && a.patientEmail?.toLowerCase() === currentUser.email.toLowerCase()) ||
+        (isDemoPatient && a.patientName.toLowerCase() === patientName.toLowerCase())
     )
-  }, [appointments, patientId, patientMrn, patientName, currentUser])
+  }, [appointments, patientId, patientMrn, patientName, currentUser, isDemoPatient])
 
   const myBills = useMemo(() => {
+    if (!currentUser) return []
     return bills.filter(
       (b) =>
         b.patientId === patientId ||
         b.patientMrn === patientMrn ||
-        b.patientName.toLowerCase() === patientName.toLowerCase()
+        (isDemoPatient && b.patientName.toLowerCase() === patientName.toLowerCase())
     )
-  }, [bills, patientId, patientMrn, patientName])
+  }, [bills, patientId, patientMrn, patientName, currentUser, isDemoPatient])
 
   const myPrescriptions = useMemo(() => {
+    if (!currentUser) return []
     return prescriptions.filter(
       (p) =>
         p.patientId === patientId ||
         p.mrn === patientMrn ||
-        p.patientName.toLowerCase() === patientName.toLowerCase()
+        (isDemoPatient && p.patientName.toLowerCase() === patientName.toLowerCase())
     )
-  }, [prescriptions, patientId, patientMrn, patientName])
+  }, [prescriptions, patientId, patientMrn, patientName, currentUser, isDemoPatient])
 
   const myQueueEntry = useMemo(() => {
+    if (!currentUser) return undefined
     return queueEntries.find(
       (q) =>
         (q.patientId === patientId ||
           q.patientMrn === patientMrn ||
-          q.patientName.toLowerCase() === patientName.toLowerCase()) &&
+          (isDemoPatient && q.patientName.toLowerCase() === patientName.toLowerCase())) &&
         q.status !== 'COMPLETED' &&
         q.status !== 'CANCELLED'
     )
-  }, [queueEntries, patientId, patientMrn, patientName])
+  }, [queueEntries, patientId, patientMrn, patientName, currentUser, isDemoPatient])
 
   const myQueueHistory = useMemo(() => {
+    if (!currentUser) return []
     return queueEntries.filter(
       (q) =>
         q.patientId === patientId ||
         q.patientMrn === patientMrn ||
-        q.patientName.toLowerCase() === patientName.toLowerCase()
+        (isDemoPatient && q.patientName.toLowerCase() === patientName.toLowerCase())
     )
-  }, [queueEntries, patientId, patientMrn, patientName])
+  }, [queueEntries, patientId, patientMrn, patientName, currentUser, isDemoPatient])
 
   // Real-time Queue Calculation
   const queueStats = useMemo(() => {

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { FormEvent, useState } from 'react'
 import { AuthCard, PasswordField, PrimaryButton, StatusMessage, TextInput } from './carelink-header'
-import { signUpWithEmail, signInWithEmail, getStaffProfile, staffProfileToDemoAccount } from '@/lib/supabase'
+import { signUpWithEmail, signInWithEmail, getStaffProfile, staffProfileToDemoAccount, upsertStaffProfile, StaffProfile } from '@/lib/supabase'
 import { findDemoAccount, DemoAccount } from '@/lib/demo-accounts'
 import { ArrowRight } from 'lucide-react'
 
@@ -38,6 +38,63 @@ export function SignUpForm() {
       role_label: 'Patient / User'
     })
 
+    if (signUpError && !signUpError.message?.toLowerCase().includes('rate limit')) {
+      setError(signUpError.message)
+      setLoading(false)
+      return
+    }
+
+    // Save patient profile data into Supabase database table (carelink_staff_profiles)
+    const userId = signUpData?.user?.id || `user-${Date.now()}`
+    const mrn = 'MRN-' + Math.floor(100000 + Math.random() * 900000)
+    const initials = cleanName
+      .split(' ')
+      .filter(Boolean)
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2) || 'PT'
+
+    const patientProfile: StaffProfile = {
+      id: userId,
+      role_slug: 'patient',
+      role_label: 'Patient / User',
+      name: cleanName,
+      title: 'Patient',
+      department: 'Personal Portal',
+      email: cleanEmail,
+      badge: 'Active Patient',
+      badge_color: 'bg-purple-100 text-purple-800 border-purple-200',
+      avatar_initials: initials,
+      summary: `Registered Patient Account (${mrn})`,
+      permissions: ['Patient dashboard access'],
+      stats: [],
+      recent_activities: [
+        {
+          title: 'Patient Registered',
+          subtitle: 'CareLink portal registration completed',
+          time: 'Just now',
+          status: 'Completed',
+          statusColor: 'bg-emerald-100 text-emerald-800'
+        }
+      ],
+      quick_actions: [],
+      mrn
+    }
+
+    try {
+      await upsertStaffProfile(patientProfile)
+    } catch (e) {
+      console.error('Failed to save profile to Supabase database:', e)
+    }
+
+    // Save user session locally with patient name and MRN
+    const account = staffProfileToDemoAccount(patientProfile)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('carelink_user', JSON.stringify(account))
+      localStorage.setItem('carelink_session_email', cleanEmail)
+    }
+
     // Send verification email via custom Gmail SMTP endpoint to bypass Supabase default rate limit
     try {
       await fetch('/api/send-email', {
@@ -54,17 +111,6 @@ export function SignUpForm() {
     }
 
     setLoading(false)
-
-    if (signUpError) {
-      // If Supabase rate limits built-in emails, allow registration to proceed via custom SMTP
-      if (signUpError.message?.toLowerCase().includes('rate limit')) {
-        setSuccess(true)
-        return
-      }
-      setError(signUpError.message)
-      return
-    }
-
     setSuccess(true)
   }
 
@@ -161,6 +207,42 @@ export function SignInForm() {
         const roleSlug = user.user_metadata?.role_slug || profile?.role_slug || 'patient'
         const roleLabel = user.user_metadata?.role_label || profile?.role_label || 'Patient / User'
         const name = user.user_metadata?.name || profile?.name || cleanEmail.split('@')[0]
+        const mrn = profile?.mrn || 'MRN-' + Math.floor(100000 + Math.random() * 900000)
+
+        if (!profile) {
+          const initials = name
+            .split(' ')
+            .filter(Boolean)
+            .map((n) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2) || 'PT'
+
+          const newProfile: StaffProfile = {
+            id: user.id,
+            role_slug: roleSlug,
+            role_label: roleLabel,
+            name,
+            title: 'Patient',
+            department: 'Personal Portal',
+            email: cleanEmail,
+            badge: 'Active Patient',
+            badge_color: 'bg-purple-100 text-purple-800 border-purple-200',
+            avatar_initials: initials,
+            summary: `Registered Account (${mrn})`,
+            permissions: ['Patient dashboard access'],
+            stats: [],
+            recent_activities: [],
+            quick_actions: [],
+            mrn
+          }
+
+          try {
+            profile = await upsertStaffProfile(newProfile)
+          } catch (e) {
+            console.error('Supabase profile save error on signin:', e)
+          }
+        }
 
         const account = profile
           ? staffProfileToDemoAccount(profile)
@@ -180,11 +262,13 @@ export function SignInForm() {
               permissions: [],
               stats: [],
               recentActivities: [],
-              quickActions: []
+              quickActions: [],
+              mrn
             }
 
         if (typeof window !== 'undefined') {
           localStorage.setItem('carelink_user', JSON.stringify(account))
+          localStorage.setItem('carelink_session_email', cleanEmail)
         }
 
         router.push(`/${account.roleSlug}`)

@@ -61,6 +61,7 @@ export interface StaffProfile {
   recent_activities: { title: string; subtitle: string; time: string; status: string; statusColor: string }[]
   quick_actions: { label: string; description: string }[]
   created_at?: string
+  mrn?: string
 }
 
 export async function getStaffProfile(userId: string, email?: string): Promise<StaffProfile | null> {
@@ -135,6 +136,7 @@ export function staffProfileToDemoAccount(profile: StaffProfile): DemoAccount {
     recentActivities: profile.recent_activities ?? [],
     quickActions: profile.quick_actions ?? [],
     createdAt: profile.created_at,
+    mrn: profile.mrn
   }
 }
 
@@ -157,5 +159,6 @@ export function demoAccountToStaffProfile(account: DemoAccount, userId: string):
     stats: account.stats,
     recent_activities: account.recentActivities,
     quick_actions: account.quickActions,
+    mrn: account.mrn
   }
 }

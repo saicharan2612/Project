@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, CheckCircle2, Loader2, MailCheck } from 'lucide-react'
 import { AuthCard, AuthShell } from '@/components/carelink-header'
-import { supabase, getStaffProfile, staffProfileToDemoAccount } from '@/lib/supabase'
+import { supabase, getStaffProfile, staffProfileToDemoAccount, upsertStaffProfile, StaffProfile } from '@/lib/supabase'
 
 function VerifyEmailContent() {
   const router = useRouter()
@@ -26,21 +26,76 @@ function VerifyEmailContent() {
       }
 
       if (session?.user) {
-        // User confirmed email — load profile and redirect
-        const profile = await getStaffProfile(session.user.id)
-        if (profile) {
-          const account = staffProfileToDemoAccount(profile)
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('carelink_user', JSON.stringify(account))
+        const user = session.user
+        const cleanEmail = user.email ? user.email.toLowerCase() : ''
+        let profile = await getStaffProfile(user.id, cleanEmail)
+
+        if (!profile) {
+          const name = user.user_metadata?.name || cleanEmail.split('@')[0] || 'Patient'
+          const roleSlug = user.user_metadata?.role_slug || 'patient'
+          const roleLabel = user.user_metadata?.role_label || 'Patient / User'
+          const mrn = 'MRN-' + Math.floor(100000 + Math.random() * 900000)
+          const initials = name
+            .split(' ')
+            .filter(Boolean)
+            .map((n: string) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2) || 'PT'
+
+          const newProfile: StaffProfile = {
+            id: user.id,
+            role_slug: roleSlug,
+            role_label: roleLabel,
+            name,
+            title: 'Patient',
+            department: 'Personal Portal',
+            email: cleanEmail,
+            badge: 'Active Patient',
+            badge_color: 'bg-purple-100 text-purple-800 border-purple-200',
+            avatar_initials: initials,
+            summary: `Registered Account (${mrn})`,
+            permissions: ['Patient dashboard access'],
+            stats: [],
+            recent_activities: [],
+            quick_actions: [],
+            mrn
           }
-          setStatus('verified')
-          setTimeout(() => router.push(`/${account.roleSlug}`), 1500)
-        } else {
-          // Patient profile not seeded yet — redirect to patient dashboard
-          // The admin will have created a profile via the admin panel
-          setStatus('verified')
-          setTimeout(() => router.push('/patient'), 1500)
+
+          try {
+            profile = await upsertStaffProfile(newProfile)
+          } catch (e) {
+            console.error('Failed to create profile during verification:', e)
+          }
         }
+
+        const account = profile
+          ? staffProfileToDemoAccount(profile)
+          : {
+              id: user.id,
+              roleSlug: 'patient',
+              roleLabel: 'Patient / User',
+              name: user.user_metadata?.name || cleanEmail.split('@')[0] || 'Patient',
+              title: 'CareLink User',
+              department: 'Personal Portal',
+              email: cleanEmail,
+              password: '',
+              badge: 'Active User',
+              badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
+              avatarInitials: 'PT',
+              summary: 'Verified Patient Account.',
+              permissions: ['Patient dashboard access'],
+              stats: [],
+              recentActivities: [],
+              quickActions: []
+            }
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('carelink_user', JSON.stringify(account))
+          if (cleanEmail) localStorage.setItem('carelink_session_email', cleanEmail)
+        }
+        setStatus('verified')
+        setTimeout(() => router.push(`/${account.roleSlug}`), 1500)
       } else {
         // No session yet — user hasn't clicked link
         setStatus('pending')

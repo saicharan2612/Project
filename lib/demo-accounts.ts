@@ -18,6 +18,7 @@ export interface DemoAccount {
   quickActions: { label: string; description: string }[]
   createdAt?: string
   isCustom?: boolean
+  mrn?: string
 }
 
 export interface PatientRecord {
