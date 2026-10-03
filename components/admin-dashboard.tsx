@@ -29,7 +29,7 @@ import {
   BACKUP_STAFF_REPLACEMENTS,
   getEligibleReplacementsForStaff
 } from '@/lib/demo-accounts'
-import { signUpWithEmail, upsertStaffProfile, demoAccountToStaffProfile, supabase } from '@/lib/supabase'
+import { signUpWithEmail, upsertStaffProfile, demoAccountToStaffProfile, staffProfileToDemoAccount, supabase } from '@/lib/supabase'
 import { SettingsModal } from '@/components/settings-modal'
 import {
   Activity,

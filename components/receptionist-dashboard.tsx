@@ -435,7 +435,12 @@ export function ReceptionistDashboard() {
       admittedDate: 'Today',
       primaryPhysician: assignedDoc?.name || 'Dr. Alexander Wright, MD',
       nurseInCharge: assignedNur?.name || 'Elena Rostova, RN',
-      billingStatus: 'Up to date'
+      billingStatus: 'Up to date',
+      registeredTime: '09:00 AM',
+      status: 'registered',
+      department: regForm.requiredSpecialization || 'General OPD',
+      assignedDoctor: assignedDoc?.name || 'Dr. Alexander Wright',
+      symptoms: regForm.allergies || 'General Checkup'
     }
 
     let updatedPatients: PatientRecord[] = []
@@ -556,7 +561,12 @@ export function ReceptionistDashboard() {
       admittedDate: 'Today',
       primaryPhysician: assignedDoc.name,
       nurseInCharge: assignedNur?.name || 'Kevin Brooks, BSN',
-      billingStatus: 'Emergency Admission'
+      billingStatus: 'Emergency Admission',
+      registeredTime: '09:00 AM',
+      status: 'waiting',
+      department: emergencyForm.requiredSpecialization || 'Emergency Medicine',
+      assignedDoctor: assignedDoc.name,
+      symptoms: emergencyForm.emergencyReason || 'Critical Triage Emergency'
     }
 
     updatePatients([newPatient, ...patients])

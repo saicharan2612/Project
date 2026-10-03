@@ -57,7 +57,7 @@ export interface StaffProfile {
   avatar_initials: string
   summary: string
   permissions: string[]
-  stats: { label: string; value: string; change?: string; tone?: string }[]
+  stats: { label: string; value: string; change?: string; tone?: 'positive' | 'warning' | 'neutral' }[]
   recent_activities: { title: string; subtitle: string; time: string; status: string; statusColor: string }[]
   quick_actions: { label: string; description: string }[]
   created_at?: string
@@ -110,6 +110,22 @@ export async function upsertStaffProfile(profile: StaffProfile): Promise<StaffPr
   if (error) console.error("Supabase profile upsert error:", error)
   if (!data) return null
   return data as StaffProfile
+}
+
+export async function getAllStaffProfiles(): Promise<StaffProfile[]> {
+  try {
+    const { data, error } = await supabase
+      .from('carelink_staff_profiles')
+      .select('*')
+    if (error) {
+      console.error("Supabase get all staff profiles error:", error)
+      return []
+    }
+    return (data || []) as StaffProfile[]
+  } catch (e) {
+    console.error("Error fetching all staff profiles:", e)
+    return []
+  }
 }
 
 // ─── Convert StaffProfile → DemoAccount shape ────────────────────────────────

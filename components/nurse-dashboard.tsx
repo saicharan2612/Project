@@ -617,7 +617,7 @@ export function NurseDashboard() {
           id: `med-${Date.now()}-2`,
           name: 'Oral Rehydration Salts (ORS)',
           dosage: '1 Sachet in 1L Water',
-          form: 'Bottle',
+          form: 'Syrup',
           frequency: 'Twice Daily (Morning & Afternoon)',
           scheduleTimes: ['09:00 AM', '03:00 PM'],
           timingInstructions: 'With Food',

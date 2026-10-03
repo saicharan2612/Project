@@ -310,7 +310,7 @@ export function BillingStaffDashboard() {
     const paidBillsCount = bills.filter((b) => b.paymentStatus === 'PAID').length
 
     const amountReceivedToday = payments
-      .filter((p) => p.paymentDateTime.toLowerCase().includes('today') || p.paymentStatus === 'PAID')
+      .filter((p) => (p.paymentDateTime && p.paymentDateTime.toLowerCase().includes('today')) || p.paymentStatus === 'PAID')
       .reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
 
     const awaitingDispensingCount = billingRequests.filter(

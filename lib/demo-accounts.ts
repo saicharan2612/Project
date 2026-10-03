@@ -42,15 +42,25 @@ export interface PatientRecord {
   department: string
   requiredSpecialization?: string
   assignedDoctor: string
+  assignedDoctorName?: string
   assignedDoctorId?: string
   assignedNurse?: string
+  assignedNurseName?: string
   assignedNurseId?: string
+  primaryPhysician?: string
+  nurseInCharge?: string
+  registeredAt?: string
   queueNumber?: string
   symptoms: string
-  triagePriority: 'Normal' | 'Urgent' | 'STAT'
+  triagePriority?: 'Normal' | 'Urgent' | 'STAT' | 'Critical'
   emergencyReason?: string
   completedTime?: string
   notes?: string
+  room?: string
+  condition?: string
+  priority?: string
+  admittedDate?: string
+  billingStatus?: string
 }
 
 export type QueuePriorityType = 'NORMAL' | 'URGENT' | 'EMERGENCY'
@@ -74,8 +84,14 @@ export interface QueueEntry {
   waitingTimeMinutes?: number
   calledAt?: string
   completedAt?: string
+  inConsultationAt?: string
   transferredToDoctorId?: string
   transferredToDoctorName?: string
+  transferredFromDoctorId?: string
+  transferredFromDoctorName?: string
+  transferredAt?: string
+  transferReason?: string
+  emergencyReason?: string
   notes?: string
 }
 
@@ -93,7 +109,7 @@ export interface QueueTransferRecord {
   originalQueueNumber: string
   newQueueNumber: string
   reason: string
-  transferType: 'FULL_QUEUE_REDIRECT' | 'SELECTED_PATIENT_REDIRECT' | 'EMERGENCY_REALLOCATION'
+  transferType: 'FULL_QUEUE_REDIRECT' | 'SELECTED_PATIENT_REDIRECT' | 'EMERGENCY_REALLOCATION' | 'DOCTOR_BUSY_REDIRECT'
   transferredBy: string
   transferredAt: string
   notes?: string
@@ -108,7 +124,7 @@ export interface HospitalDoctor {
   email: string
   phone: string
   roomNumber: string
-  status: 'AVAILABLE' | 'BUSY' | 'IN_CONSULTATION' | 'EMERGENCY' | 'OFFLINE' | 'ON_LEAVE'
+  status: 'AVAILABLE' | 'BUSY' | 'IN_CONSULTATION' | 'EMERGENCY' | 'IN_EMERGENCY' | 'OFFLINE' | 'ON_LEAVE'
   currentQueueCount: number
   avatarInitials: string
 }
@@ -144,16 +160,19 @@ export interface LeaveRequest {
   staffName: string
   staffRole: string
   department: string
-  leaveType: 'Sick Leave' | 'Annual Leave' | 'Emergency Leave' | 'Medical Conference' | 'Maternity / Paternity'
+  leaveType: 'Sick Leave' | 'Annual Leave' | 'Emergency Leave' | 'Medical Conference' | 'Maternity / Paternity' | 'Casual Leave' | 'Annual Vacation' | 'Emergency Medical Leave'
   startDate: string
   endDate: string
-  shiftSlot: 'Morning (08:00 - 16:00)' | 'Evening (16:00 - 00:00)' | 'Night (00:00 - 08:00)' | 'Full Day (All Shifts)'
+  shiftSlot?: 'Morning (08:00 - 16:00)' | 'Evening (16:00 - 00:00)' | 'Night (00:00 - 08:00)' | 'Full Day (All Shifts)' | string
+  shift?: string
+  durationDays?: number
   reason: string
   status: 'pending' | 'approved' | 'rejected'
   replacementStaffId?: string
   replacementStaffName?: string
   adminNotes?: string
-  submittedAt: string
+  submittedAt?: string
+  requestedAt?: string
 }
 
 export interface StaffShiftAssignment {
@@ -261,20 +280,25 @@ export interface PaymentRecord {
   amount: number
   paymentMethod: PaymentMethodType
   transactionId: string
-  paymentDateTime: string
-  paymentStatus: PaymentStatusType
-  confirmedBy: string
+  paymentDateTime?: string
+  paymentStatus?: PaymentStatusType
+  status?: string
+  paidAt?: string
+  collectedBy?: string
+  confirmedBy?: string
   notes?: string
 }
 
 export interface HospitalNotification {
   id: string
   toRole?: string
+  recipientRole?: string
   toUserId?: string
   title: string
   message: string
-  type: 'info' | 'success' | 'warning' | 'payment' | 'dispense'
+  type: 'info' | 'success' | 'warning' | 'payment' | 'dispense' | 'urgent' | 'PAYMENT_RECEIVED' | 'DISPENSING_READY'
   link?: string
+  referenceId?: string
   read: boolean
   createdAt: string
 }
@@ -313,7 +337,7 @@ export interface AppointmentRequest {
   requestedTime: string
   visitType: 'Follow-up' | 'New Consultation' | 'Telehealth' | 'Post-op Review'
   reason: string
-  status: 'pending' | 'approved' | 'rescheduled' | 'cancelled' | 'rejected'
+  status: 'pending' | 'approved' | 'rescheduled' | 'cancelled' | 'rejected' | 'completed'
   rescheduledDate?: string
   rescheduledTime?: string
   doctorNote?: string
@@ -352,7 +376,7 @@ export interface MedicineInventory {
   currentStock: number
   reorderThreshold: number
   unitPrice: number
-  unitType: 'Capsules' | 'Tablets' | 'Vials' | 'Inhalers' | 'Bottles'
+  unitType: 'Capsules' | 'Tablets' | 'Vials' | 'Inhalers' | 'Bottles' | 'Bottle' | 'Capsule' | 'Tablet' | 'Syrup' | 'Injection' | string
   stockStatus: 'Optimal' | 'Moderate' | 'Low Stock' | 'Critical'
   expiryDate: string
   batchNumber: string
@@ -2191,8 +2215,8 @@ export interface DoctorAvailability {
   endTime: string
   breakStartTime?: string
   breakEndTime?: string
-  slotDurationMinutes: number
-  maxDailyPatients: number
+  slotDurationMinutes?: number
+  maxDailyPatients?: number
   statusNote?: string
   lastUpdated?: string
 }

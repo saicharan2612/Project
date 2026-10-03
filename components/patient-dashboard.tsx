@@ -39,6 +39,7 @@ import {
   validateAppointmentBooking
 } from '@/lib/demo-accounts'
 import { SettingsModal } from '@/components/settings-modal'
+import { getAllStaffProfiles } from '@/lib/supabase'
 import {
   Activity,
   AlertCircle,
@@ -183,7 +184,8 @@ export function PatientDashboard() {
       }
       if (!account) {
         const sessionEmail = localStorage.getItem('carelink_session_email')
-        account = sessionEmail ? findDemoAccount(sessionEmail) : null
+        const found = sessionEmail ? findDemoAccount(sessionEmail) : null
+        account = found || null
       }
     }
     if (!account) {
@@ -195,11 +197,49 @@ export function PatientDashboard() {
     setBills(getStoredBills())
     setPrescriptions(getStoredPrescriptions())
     setQueueEntries(getStoredQueueEntries())
-    setDoctors(getStoredHospitalDoctors())
     setLocations(getStoredHospitalLocations())
     setServices(getStoredHospitalServices())
     setLeaveRequests(getStoredLeaveRequests())
     setNotifications(getStoredNotifications())
+
+    // Dynamically fetch staff & doctor profiles from Supabase database
+    async function loadSupabaseStaff() {
+      try {
+        const staffProfiles = await getAllStaffProfiles()
+        const activeStaff = staffProfiles.filter(
+          (p) => p.role_slug && p.role_slug !== 'patient'
+        )
+
+        if (activeStaff.length > 0) {
+          const supabaseDoctors: HospitalDoctor[] = activeStaff.map((profile) => ({
+            id: profile.id,
+            name: profile.name,
+            title: profile.title || profile.role_label || 'Staff',
+            department: profile.department || profile.specialization || 'General Healthcare',
+            specialization: profile.specialization || profile.department || 'General Healthcare',
+            email: profile.email,
+            phone: '+91 98765 43210',
+            roomNumber: 'OPD-' + (101 + Math.abs(profile.name.length * 7) % 25),
+            status: 'AVAILABLE' as const,
+            currentQueueCount: 0,
+            avatarInitials: profile.avatar_initials || profile.name.slice(0, 2).toUpperCase()
+          }))
+
+          setDoctors(supabaseDoctors)
+          if (supabaseDoctors.length > 0) {
+            setBookingDoctorId(supabaseDoctors[0].id)
+            setBookingSpec(supabaseDoctors[0].specialization || supabaseDoctors[0].department)
+          }
+        } else {
+          setDoctors(getStoredHospitalDoctors())
+        }
+      } catch (err) {
+        console.error('Error fetching staff profiles from Supabase:', err)
+        setDoctors(getStoredHospitalDoctors())
+      }
+    }
+
+    loadSupabaseStaff()
   }, [])
 
   // Patient Identity (MRN & Name)
@@ -304,6 +344,12 @@ export function PatientDashboard() {
       return count
     }, 0)
   }, [myPrescriptions])
+
+  const specializationOptions = useMemo(() => {
+    const specsFromDoctors = doctors.map((d) => d.specialization || d.department).filter(Boolean)
+    const set = new Set([...specsFromDoctors, ...HOSPITAL_SPECIALIZATIONS])
+    return Array.from(set)
+  }, [doctors])
 
   // Available Time Slots for Booking
   const availableSlots: DoctorTimeSlot[] = useMemo(() => {
@@ -1448,7 +1494,7 @@ export function PatientDashboard() {
                         }}
                         className="mt-1 h-11 w-full rounded-xl border border-[var(--care-border)] bg-[var(--care-surface)] px-3 text-xs font-semibold outline-none focus:border-purple-600"
                       >
-                        {HOSPITAL_SPECIALIZATIONS.map((s) => (
+                        {specializationOptions.map((s) => (
                           <option key={s} value={s}>
                             {s}
                           </option>
@@ -1457,7 +1503,7 @@ export function PatientDashboard() {
                     </div>
 
                     <div>
-                      <label className="text-xs font-bold text-[var(--care-ink)]">2. Select Doctor *</label>
+                      <label className="text-xs font-bold text-[var(--care-ink)]">2. Select Doctor / Staff *</label>
                       <select
                         value={bookingDoctorId}
                         onChange={(e) => {
@@ -1467,15 +1513,28 @@ export function PatientDashboard() {
                         className="mt-1 h-11 w-full rounded-xl border border-[var(--care-border)] bg-[var(--care-surface)] px-3 text-xs font-semibold outline-none focus:border-purple-600"
                       >
                         {doctors
-                          .filter((d) => d.specialization.toLowerCase() === bookingSpec.toLowerCase())
+                          .filter(
+                            (d) =>
+                              !bookingSpec ||
+                              d.specialization.toLowerCase() === bookingSpec.toLowerCase() ||
+                              d.department.toLowerCase() === bookingSpec.toLowerCase()
+                          )
                           .map((doc) => (
                             <option key={doc.id} value={doc.id}>
-                              {doc.name} ({doc.roomNumber || 'OPD'})
+                              {doc.name} ({doc.title || doc.specialization} - {doc.roomNumber || 'OPD'})
                             </option>
                           ))}
-                        {doctors.filter((d) => d.specialization.toLowerCase() === bookingSpec.toLowerCase()).length === 0 && (
-                          <option value="demo-doctor">Dr. Alexander Wright, MD (Cardiology)</option>
-                        )}
+                        {doctors.filter(
+                          (d) =>
+                            !bookingSpec ||
+                            d.specialization.toLowerCase() === bookingSpec.toLowerCase() ||
+                            d.department.toLowerCase() === bookingSpec.toLowerCase()
+                        ).length === 0 &&
+                          doctors.map((doc) => (
+                            <option key={doc.id} value={doc.id}>
+                              {doc.name} ({doc.title || doc.specialization} - {doc.roomNumber || 'OPD'})
+                            </option>
+                          ))}
                       </select>
                     </div>
                   </div>
@@ -2435,11 +2494,13 @@ export function PatientDashboard() {
       )}
 
       {/* Settings Modal */}
-      <SettingsModal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        currentUser={currentUser}
-      />
+      {currentUser && (
+        <SettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          currentUser={currentUser}
+        />
+      )}
     </div>
   )
 }

@@ -344,7 +344,7 @@ export function RoleDashboard({ roleSlug }: RoleDashboardProps) {
       patientName: payingBill.patientName,
       amount: payingBill.finalAmount,
       paymentMethod: patientPayMethod,
-      transactionRef: txnId,
+      transactionId: txnId,
       status: 'PAID',
       paidAt: new Date().toISOString(),
       collectedBy: 'Patient Self-Service (Online / Recorded)'
@@ -956,11 +956,11 @@ export function RoleDashboard({ roleSlug }: RoleDashboardProps) {
                 </div>
               </div>
               <span className="rounded-full bg-blue-100 border border-blue-300 px-3 py-1 text-xs font-bold text-blue-900 self-start sm:self-auto">
-                {patientBills.filter((b) => b.isSharedWithPatient || b.patientId === currentUser.id).length} Shared Bills
+                {patientBills.filter((b) => b.sharedWithPatient || b.patientId === currentUser.id).length} Shared Bills
               </span>
             </div>
 
-            {patientBills.filter((b) => b.isSharedWithPatient || b.patientId === currentUser.id).length === 0 ? (
+            {patientBills.filter((b) => b.sharedWithPatient || b.patientId === currentUser.id).length === 0 ? (
               <div className="mt-5 rounded-2xl border border-dashed border-blue-200 bg-white/70 p-8 text-center text-xs text-blue-800">
                 <CreditCard className="mx-auto size-8 text-blue-400 mb-2" />
                 No active hospital bills currently shared with your profile. When your attending Nurse sends your prescription to Billing Staff, your itemized invoice will appear here.
@@ -968,7 +968,7 @@ export function RoleDashboard({ roleSlug }: RoleDashboardProps) {
             ) : (
               <div className="mt-5 grid gap-5 lg:grid-cols-2">
                 {patientBills
-                  .filter((b) => b.isSharedWithPatient || b.patientId === currentUser.id)
+                  .filter((b) => b.sharedWithPatient || b.patientId === currentUser.id)
                   .map((bill) => {
                     const isPaid = bill.paymentStatus === 'PAID'
                     return (
@@ -987,10 +987,10 @@ export function RoleDashboard({ roleSlug }: RoleDashboardProps) {
                                 {bill.billNumber}
                               </span>
                               <h3 className="mt-1 text-sm font-bold text-[var(--care-ink)]">
-                                Prescription Bill Â· {bill.prescriptionId}
+                                Prescription Bill · {bill.prescriptionId}
                               </h3>
                               <p className="text-[11px] text-[var(--care-muted)]">
-                                Issued by {bill.createdBy} Â· Nurse: {bill.nurseName}
+                                Issued by {bill.createdByName} · Nurse: {bill.nurseName}
                               </p>
                             </div>
 
@@ -1026,12 +1026,12 @@ export function RoleDashboard({ roleSlug }: RoleDashboardProps) {
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                  {bill.medicines.map((m) => (
-                                    <tr key={m.id}>
+                                  {bill.medicines.map((m, idx) => (
+                                    <tr key={m.name + idx}>
                                       <td className="px-3 py-2 font-medium text-slate-900">{m.name}</td>
                                       <td className="px-2 py-2 text-center text-slate-600 font-semibold">{m.quantity}</td>
-                                      <td className="px-2 py-2 text-right text-slate-600">â‚¹{m.unitPrice}</td>
-                                      <td className="px-3 py-2 text-right font-bold text-slate-900">â‚¹{m.total}</td>
+                                      <td className="px-2 py-2 text-right text-slate-600">₹{m.unitPrice}</td>
+                                      <td className="px-3 py-2 text-right font-bold text-slate-900">₹{m.total}</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -1043,23 +1043,23 @@ export function RoleDashboard({ roleSlug }: RoleDashboardProps) {
                           <div className="mt-3 rounded-xl bg-slate-50 p-3 space-y-1 text-xs border border-slate-200">
                             <div className="flex justify-between text-slate-600">
                               <span>Subtotal:</span>
-                              <span className="font-semibold">â‚¹{bill.subtotal.toLocaleString()}</span>
+                              <span className="font-semibold">₹{bill.subtotal.toLocaleString()}</span>
                             </div>
                             {bill.discount > 0 && (
                               <div className="flex justify-between text-emerald-700">
                                 <span>Hospital Discount:</span>
-                                <span className="font-semibold">- â‚¹{bill.discount.toLocaleString()}</span>
+                                <span className="font-semibold">- ₹{bill.discount.toLocaleString()}</span>
                               </div>
                             )}
                             {bill.tax > 0 && (
                               <div className="flex justify-between text-slate-600">
                                 <span>GST / Taxes:</span>
-                                <span className="font-semibold">+ â‚¹{bill.tax.toLocaleString()}</span>
+                                <span className="font-semibold">+ ₹{bill.tax.toLocaleString()}</span>
                               </div>
                             )}
                             <div className="flex justify-between text-sm font-black text-slate-900 border-t border-slate-200 pt-1.5 mt-1">
                               <span>Total Amount Payable:</span>
-                              <span className="text-blue-900 text-base">â‚¹{bill.finalAmount.toLocaleString()}</span>
+                              <span className="text-blue-900 text-base">₹{bill.finalAmount.toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
@@ -1069,7 +1069,7 @@ export function RoleDashboard({ roleSlug }: RoleDashboardProps) {
                           {isPaid ? (
                             <div className="text-[11px] text-emerald-800 flex items-center gap-1.5 font-medium">
                               <CheckCircle2 className="size-4 text-emerald-600" />
-                              <span>Paid via {bill.paymentMethod || 'UPI'} on {new Date(bill.paidAt || bill.createdAt).toLocaleDateString()} (Ref: {bill.transactionRef || 'TXN-PAID'})</span>
+                              <span>Paid via {bill.paymentMethod || 'UPI'} on {new Date(bill.paidAt || bill.createdAt).toLocaleDateString()} (Ref: {bill.transactionId || 'TXN-PAID'})</span>
                             </div>
                           ) : (
                             <>
