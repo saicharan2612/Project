@@ -25,7 +25,7 @@ export default function Page() {
                 href="/sign-in"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--care-primary)] px-5 py-3.5 font-semibold text-white transition hover:bg-[var(--care-primary-dark)] shadow-sm"
               >
-                Sign in with Demo Accounts <ArrowRight size={17} />
+                Sign in <ArrowRight size={17} />
               </Link>
               <Link
                 href="/sign-up"
